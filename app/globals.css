@@ -5,11 +5,24 @@
   --foreground: #171717;
 }
 
+/* Breakpoint fluido de escritorio: el mockup de Figma solo cubre un frame
+   fijo (1920px). Redefinir --breakpoint-xl a 1366px (borde inferior del
+   rango fluido) en vez de un breakpoint con nombre custom, para que
+   Tailwind v4 mantenga el orden de emisión correcto de la escala default
+   cuando se combina con sm:/md:/lg: en la misma propiedad. */
+@theme {
+  --breakpoint-xl: 85.375rem;
+
+  /* hero-section (node 1:115) */
+  --color-ldc-navy: #0f1024;
+  --frame-max-w: 120rem;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-satoshi);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +35,4 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }
