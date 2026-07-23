@@ -3,7 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 
-type AnimatedTag = "div" | "section" | "header" | "article" | "aside" | "span";
+type AnimatedTag = "div" | "section" | "header" | "article" | "aside" | "span" | "li";
 
 interface AnimatedSectionProps {
   children: ReactNode;
