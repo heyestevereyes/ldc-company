@@ -16,6 +16,11 @@
   /* hero-section (node 1:115) */
   --color-ldc-navy: #0f1024;
   --frame-max-w: 120rem;
+
+  /* nosotros-sec (node 1:192) */
+  --color-ldc-gray: #f0f0f0;
+  --color-ldc-ink: #101010;
+  --color-ldc-blue: #1a2bc3;
 }
 
 @theme inline {
