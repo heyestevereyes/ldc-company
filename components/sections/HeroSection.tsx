@@ -1,8 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import Image from "next/image";
+import {
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+} from "framer-motion";
 import AnimatedSection from "@/components/AnimatedSection";
+
+/** Desplazamiento máximo del parallax del trabajador, en cada eje (px). */
+const WORKER_PARALLAX_RANGE = 12;
+
+function clamp(value: number, limit: number) {
+  return Math.max(-limit, Math.min(limit, value));
+}
 
 export interface HeroNavLink {
   label: string;
@@ -47,9 +60,104 @@ export default function HeroSection({
   description = "En Lithos construimos espacios pensados para resistir el tiempo y acompañar generaciones. Porque un hogar no se mide en metros, se mide en los años que es capaz de permanecer.",
 }: HeroSectionProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuToggleRef = useRef<HTMLButtonElement>(null);
+  const prefersReducedMotion = useReducedMotion();
+
+  const closeMenu = () => setIsMenuOpen(false);
+
+  // Bloquea el scroll del body mientras el menú fullscreen está abierto.
+  // Compensa el ancho de la scrollbar con padding-right para que el header
+  // (y el propio botón hamburguesa/X) no se desplace al desaparecer/reaparecer.
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    const { body } = document;
+    const previousOverflow = body.style.overflow;
+    const previousPaddingRight = body.style.paddingRight;
+
+    body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    return () => {
+      body.style.overflow = previousOverflow;
+      body.style.paddingRight = previousPaddingRight;
+    };
+  }, [isMenuOpen]);
+
+  // Cierra con Esc y devuelve el foco al botón que abrió el menú.
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMenuOpen(false);
+        menuToggleRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isMenuOpen]);
+
+  // Solo desktop con mouse real: se resincroniza si cambia el viewport o el
+  // dispositivo de entrada (p. ej. una tablet con mouse conectado).
+  const [canParallax, setCanParallax] = useState(false);
+  useEffect(() => {
+    const pointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const viewportQuery = window.matchMedia("(min-width: 1366px)");
+    const update = () =>
+      setCanParallax(
+        pointerQuery.matches && viewportQuery.matches && !prefersReducedMotion,
+      );
+
+    update();
+    pointerQuery.addEventListener("change", update);
+    viewportQuery.addEventListener("change", update);
+    return () => {
+      pointerQuery.removeEventListener("change", update);
+      viewportQuery.removeEventListener("change", update);
+    };
+  }, [prefersReducedMotion]);
+
+  const workerMouseX = useMotionValue(0);
+  const workerMouseY = useMotionValue(0);
+  const workerX = useSpring(workerMouseX, { stiffness: 150, damping: 20 });
+  const workerY = useSpring(workerMouseY, { stiffness: 150, damping: 20 });
+
+  useEffect(() => {
+    if (!canParallax) {
+      workerMouseX.set(0);
+      workerMouseY.set(0);
+    }
+  }, [canParallax, workerMouseX, workerMouseY]);
+
+  const handleHeroMouseMove = (event: ReactMouseEvent<HTMLElement>) => {
+    if (!canParallax) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const relativeX = event.clientX - rect.left - rect.width / 2;
+    const relativeY = event.clientY - rect.top - rect.height / 2;
+    workerMouseX.set(
+      clamp((relativeX / (rect.width / 2)) * WORKER_PARALLAX_RANGE, WORKER_PARALLAX_RANGE),
+    );
+    workerMouseY.set(
+      clamp((relativeY / (rect.height / 2)) * WORKER_PARALLAX_RANGE, WORKER_PARALLAX_RANGE),
+    );
+  };
+
+  const handleHeroMouseLeave = () => {
+    workerMouseX.set(0);
+    workerMouseY.set(0);
+  };
 
   return (
-    <section className="relative w-full overflow-hidden min-h-[100svh] xl:h-[clamp(48.0234rem,56.25vw,67.5rem)] xl:min-h-0">
+    <section
+      className="relative w-full overflow-hidden min-h-[100svh] xl:h-dvh xl:min-h-0"
+      onMouseMove={handleHeroMouseMove}
+      onMouseLeave={handleHeroMouseLeave}
+    >
       {/* Fondo: foto de obra + overlay oscuro (image 76, node 1:116) */}
       <div className="absolute inset-0" aria-hidden>
         <Image
@@ -64,9 +172,18 @@ export default function HeroSection({
       </div>
 
       {/* Trabajador (worker 1, node 10:82) — protagonista visual, se oculta en mobile/tablet
-          porque el mockup de Figma no cubre ese layout y compite con el texto apilado. */}
-      <div
-        className="hidden xl:block xl:absolute xl:top-[clamp(7.5592rem,8.8542vw,10.625rem)] xl:right-[clamp(11.2499rem,13.1771vw,15.8125rem)] xl:h-[clamp(41.8426rem,49.0104vw,58.8125rem)] xl:w-[clamp(25.5236rem,29.8958vw,35.875rem)]"
+          porque el mockup de Figma no cubre ese layout y compite con el texto apilado.
+          Anclado a bottom-0 (en vez del top fijo del frame de Figma) para que encaje
+          sin huecos ni recortes verticales sea cual sea la altura real del viewport,
+          ahora que la sección es xl:h-dvh en vez de una altura fluida por ancho.
+          xl:max-h-full evita que choque con el nav en ventanas muy anchas pero bajas,
+          donde el clamp() por ancho daría una altura mayor a la de la propia sección.
+          Parallax sutil siguiendo el mouse: solo activo en desktop con puntero fino
+          (canParallax), la sección tiene overflow-hidden así que el offset nunca
+          produce scroll horizontal/vertical. */}
+      <motion.div
+        style={{ x: workerX, y: workerY }}
+        className="hidden xl:block xl:absolute xl:bottom-0 xl:right-[clamp(11.2499rem,13.1771vw,15.8125rem)] xl:h-[clamp(41.8426rem,49.0104vw,58.8125rem)] xl:max-h-full xl:w-[clamp(25.5236rem,29.8958vw,35.875rem)]"
         aria-hidden
       >
         <Image
@@ -76,11 +193,14 @@ export default function HeroSection({
           sizes="(min-width: 1366px) 30vw, 0vw"
           className="object-cover"
         />
-      </div>
+      </motion.div>
 
       <div className="relative mx-auto flex h-full min-h-[100svh] max-w-(--frame-max-w) flex-col xl:min-h-0 xl:block">
-        {/* Header: logo + nav (node 1:119, 1:184) */}
-        <AnimatedSection as="header">
+        {/* Header: logo + nav (node 1:119, 1:184). z-50 en el AnimatedSection (no en un
+            descendiente) porque es lo que crea el stacking context comparado contra el
+            overlay fullscreen (z-40) — así el logo y el botón hamburguesa/X quedan
+            siempre visibles y clicables por encima, sin importar el orden en el DOM. */}
+        <AnimatedSection as="header" className="relative z-50">
           <div
             className="relative flex items-center justify-between gap-4 px-6 py-5
               xl:absolute xl:inset-x-0 xl:top-0 xl:px-0
@@ -110,7 +230,11 @@ export default function HeroSection({
               />
             </a>
 
+            {/* Toggle hamburguesa/X: mismo botón (no se remonta entre estados), mismo
+                tamaño fijo (size-10) y mismo padding del header en ambos estados, así
+                que su posición nunca cambia al abrir/cerrar. */}
             <button
+              ref={menuToggleRef}
               type="button"
               onClick={() => setIsMenuOpen((open) => !open)}
               aria-expanded={isMenuOpen}
@@ -129,12 +253,9 @@ export default function HeroSection({
               />
             </button>
 
-            <div className="items-center gap-[clamp(1.5563rem,1.8229vw,2.1875rem)] xl:flex">
-              <nav
-                id="hero-mobile-nav"
-                aria-label="Principal"
-                className={`${isMenuOpen ? "flex" : "hidden"} absolute inset-x-0 top-full flex-col gap-1 bg-ldc-navy/95 px-6 py-4 backdrop-blur-sm xl:static xl:flex xl:flex-row xl:gap-[clamp(2.0899rem,2.4479vw,2.9375rem)] xl:bg-transparent xl:p-0 xl:backdrop-blur-none`}
-              >
+            {/* Nav + CTA de escritorio: fila inline junto al logo, solo desde xl:. */}
+            <div className="hidden items-center gap-[clamp(1.5563rem,1.8229vw,2.1875rem)] xl:flex">
+              <nav aria-label="Principal" className="flex flex-row gap-[clamp(2.0899rem,2.4479vw,2.9375rem)]">
                 {navLinks.map((link) => (
                   <a
                     key={link.href}
@@ -148,7 +269,7 @@ export default function HeroSection({
 
               <a
                 href={ctaHref}
-                className="hidden shrink-0 items-center rounded-[clamp(0.4447rem,0.5208vw,0.625rem)] bg-white px-[clamp(1.0672rem,1.25vw,1.5rem)] py-[clamp(0.6225rem,0.7292vw,0.875rem)] font-medium text-[clamp(0.7115rem,0.8333vw,1rem)] text-ldc-navy leading-[1.5] transition-colors hover:bg-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ldc-navy focus-visible:outline-offset-2 xl:inline-flex"
+                className="inline-flex shrink-0 items-center rounded-[clamp(0.4447rem,0.5208vw,0.625rem)] bg-white px-[clamp(1.0672rem,1.25vw,1.5rem)] py-[clamp(0.6225rem,0.7292vw,0.875rem)] font-medium text-[clamp(0.7115rem,0.8333vw,1rem)] text-ldc-navy leading-[1.5] transition-colors hover:bg-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ldc-navy focus-visible:outline-offset-2"
               >
                 {ctaLabel}
               </a>
@@ -171,16 +292,40 @@ export default function HeroSection({
               {description}
             </p>
           </AnimatedSection>
-          <AnimatedSection delay={0.25} className="xl:hidden">
-            <a
-              href={ctaHref}
-              className="mt-2 inline-flex items-center rounded-lg bg-white px-6 py-3 text-sm font-medium text-ldc-navy transition-colors hover:bg-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-            >
-              {ctaLabel}
-            </a>
-          </AnimatedSection>
         </div>
       </div>
+
+      {/* Overlay fullscreen del menú mobile. Vive fuera de cualquier AnimatedSection a
+          propósito: Framer Motion deja un transform aplicado (aunque sea translateY(0))
+          en el elemento animado incluso en reposo, y cualquier transform en un ancestro
+          crea un containing block nuevo para position:fixed — si este nav quedara
+          anidado ahí, "fixed inset-0" se ataría a los límites del header animado en vez
+          del viewport real. 100dvh en vez de 100vh evita el salto por la barra de
+          direcciones del navegador móvil. z-40, por debajo del header (z-50), para que
+          el botón X siga siendo el mismo elemento clicable en la misma posición. */}
+      <nav
+        id="hero-mobile-nav"
+        aria-label="Principal"
+        className={`${isMenuOpen ? "flex" : "hidden"} fixed inset-0 z-40 h-dvh w-full flex-col items-center justify-center gap-2 overflow-y-auto bg-ldc-navy px-6 py-24 xl:hidden`}
+      >
+        {navLinks.map((link) => (
+          <a
+            key={link.href}
+            href={link.href}
+            onClick={closeMenu}
+            className="rounded-sm px-4 py-3 font-display text-2xl font-medium text-white/80 transition-colors hover:text-white focus-visible:text-white focus-visible:outline-none"
+          >
+            {link.label}
+          </a>
+        ))}
+        <a
+          href={ctaHref}
+          onClick={closeMenu}
+          className="mt-4 inline-flex items-center rounded-lg bg-white px-8 py-3 text-base font-medium text-ldc-navy transition-colors hover:bg-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+        >
+          {ctaLabel}
+        </a>
+      </nav>
     </section>
   );
 }
