@@ -103,7 +103,8 @@ export default function HeroSection({
   }, [isMenuOpen]);
 
   // Solo desktop con mouse real: se resincroniza si cambia el viewport o el
-  // dispositivo de entrada (p. ej. una tablet con mouse conectado).
+  // dispositivo de entrada (p. ej. una tablet con mouse conectado). El
+  // parallax nunca corre en mobile/tablet: el worker ahí es estático.
   const [canParallax, setCanParallax] = useState(false);
   useEffect(() => {
     const pointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
@@ -158,8 +159,11 @@ export default function HeroSection({
       onMouseMove={handleHeroMouseMove}
       onMouseLeave={handleHeroMouseLeave}
     >
-      {/* Fondo: foto de obra + overlay oscuro (image 76, node 1:116) */}
-      <div className="absolute inset-0" aria-hidden>
+      {/* CAPA 1 (fondo): foto de obra + overlay oscuro (image 76, node 1:116).
+          z-0 explícito: es solo documentación, ya pintaría al fondo igual (z-index:
+          auto/0 sobre un descendiente posicionado pinta antes que cualquier z
+          positivo), pero lo dejamos explícito para que las 3 capas se lean juntas. */}
+      <div className="absolute inset-0 z-0" aria-hidden>
         <Image
           src={backgroundImageSrc}
           alt=""
@@ -171,16 +175,40 @@ export default function HeroSection({
         <div className="absolute inset-0 bg-ldc-navy/50" />
       </div>
 
-      {/* Trabajador (worker 1, node 10:82) — protagonista visual, se oculta en mobile/tablet
-          porque el mockup de Figma no cubre ese layout y compite con el texto apilado.
-          Anclado a bottom-0 (en vez del top fijo del frame de Figma) para que encaje
-          sin huecos ni recortes verticales sea cual sea la altura real del viewport,
-          ahora que la sección es xl:h-dvh en vez de una altura fluida por ancho.
-          xl:max-h-full evita que choque con el nav en ventanas muy anchas pero bajas,
-          donde el clamp() por ancho daría una altura mayor a la de la propia sección.
-          Parallax sutil siguiendo el mouse: solo activo en desktop con puntero fino
-          (canParallax), la sección tiene overflow-hidden así que el offset nunca
-          produce scroll horizontal/vertical. */}
+      {/* CAPA 2 (worker, mobile/tablet): versión estática — sin parallax, eso es
+          solo desktop — a todo el ancho del hero en mobile, debajo del header,
+          para que se integre como fondo real en vez de una cajita flotando en
+          una esquina. El headline y el párrafo (capa 3, bottom-0) quedan
+          overlaid sobre su tercio inferior a propósito — el gradiente hacia
+          navy en ese borde es lo que sostiene el contraste ahí, igual que el
+          tratamiento del fondo. h-[100svh] a pantalla completa en todos los
+          rangos < xl:; object-top (en vez del center por defecto) evita que el
+          recorte de object-cover pierda el casco. md:w-1/2 md:left-1/2 acota
+          el ancho a la mitad derecha del hero en tablet (ajuste confirmado a
+          ojo en el inspector) — en mobile se queda full-bleed (inset-x-0, sin
+          w-1/2/left-1/2). Se apaga en xl: porque ahí toma el relevo el worker
+          con parallax de abajo. */}
+      <div
+        className="absolute inset-x-0 top-20 z-10 h-[100svh] md:h-[100svh] md:w-1/2 md:left-1/2 xl:hidden"
+        aria-hidden
+      >
+        <Image
+          src={workerImageSrc}
+          alt=""
+          fill
+          sizes="(max-width: 1365px) 100vw, 0vw"
+          className="object-cover object-top"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-ldc-navy" />
+      </div>
+
+      {/* CAPA 2 (worker, desktop): protagonista visual con parallax sutil siguiendo
+          el mouse (node 10:82). Anclado a bottom-0 (en vez del top fijo del frame
+          de Figma) para que encaje sin huecos ni recortes verticales sea cual sea
+          la altura real del viewport, ahora que la sección es xl:h-dvh en vez de
+          una altura fluida por ancho. xl:max-h-full evita que choque con el nav
+          en ventanas muy anchas pero bajas. La sección tiene overflow-hidden así
+          que el offset del parallax nunca produce scroll horizontal/vertical. */}
       <motion.div
         style={{ x: workerX, y: workerY }}
         className="hidden xl:block xl:absolute xl:bottom-0 xl:right-[clamp(11.2499rem,13.1771vw,15.8125rem)] xl:h-[clamp(41.8426rem,49.0104vw,58.8125rem)] xl:max-h-full xl:w-[clamp(25.5236rem,29.8958vw,35.875rem)]"
@@ -195,104 +223,127 @@ export default function HeroSection({
         />
       </motion.div>
 
-      <div className="relative mx-auto flex h-full min-h-[100svh] max-w-(--frame-max-w) flex-col xl:min-h-0 xl:block">
-        {/* Header: logo + nav (node 1:119, 1:184). z-50 en el AnimatedSection (no en un
-            descendiente) porque es lo que crea el stacking context comparado contra el
-            overlay fullscreen (z-40) — así el logo y el botón hamburguesa/X quedan
-            siempre visibles y clicables por encima, sin importar el orden en el DOM. */}
-        <AnimatedSection as="header" className="relative z-50">
-          <div
-            className="relative flex items-center justify-between gap-4 px-6 py-5
-              xl:absolute xl:inset-x-0 xl:top-0 xl:px-0
-              xl:pt-[clamp(2.3122rem,2.7083vw,3.25rem)]
-              xl:pl-[clamp(2.8458rem,3.3333vw,4rem)]
-              xl:pr-[clamp(3.335rem,3.9063vw,4.6875rem)]"
+      {/* Header: logo + nav (node 1:119, 1:184). Hijo directo de la sección (ya no
+          comparte wrapper con el copy) para que z-50 compare directamente contra
+          el overlay fullscreen del menú (z-40) sin quedar atrapado dentro de un
+          stacking context intermedio — así el logo y el botón hamburguesa/X
+          quedan siempre visibles y clicables por encima. En flujo normal (no
+          absolute): al no compartir columna flex con el copy ya no hace falta
+          sacarlo del flujo para que no le quite alto al texto. */}
+      <AnimatedSection
+        as="header"
+        className="relative z-50 mx-auto max-w-(--frame-max-w)"
+      >
+        <div
+          className="flex items-center justify-between gap-4 px-6 py-5
+            md:px-10 lg:px-11
+            xl:px-0
+            xl:pt-[clamp(2.3122rem,2.7083vw,3.25rem)]
+            xl:pl-[clamp(2.8458rem,3.3333vw,4rem)]
+            xl:pr-[clamp(3.335rem,3.9063vw,4.6875rem)]"
+        >
+          <a
+            href="#inicio"
+            className="flex shrink-0 items-center gap-[clamp(0.2893rem,0.3388vw,0.4066rem)] rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
           >
+            <Image
+              src={logoMarkSrc}
+              alt=""
+              width={143}
+              height={46}
+              unoptimized
+              className="h-8 w-auto xl:h-[clamp(2.0418rem,2.3916vw,2.8699rem)]"
+            />
+            <Image
+              src={logoWordmarkSrc}
+              alt={logoWordmarkAlt}
+              width={115}
+              height={56}
+              unoptimized
+              className="h-9 w-auto xl:h-[clamp(2.4901rem,2.9167vw,3.5rem)]"
+            />
+          </a>
+
+          {/* Toggle hamburguesa/X: mismo botón (no se remonta entre estados), mismo
+              tamaño fijo (size-10) y mismo padding del header en ambos estados, así
+              que su posición nunca cambia al abrir/cerrar. */}
+          <button
+            ref={menuToggleRef}
+            type="button"
+            onClick={() => setIsMenuOpen((open) => !open)}
+            aria-expanded={isMenuOpen}
+            aria-controls="hero-mobile-nav"
+            aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
+            className="relative flex size-10 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white xl:hidden"
+          >
+            <span
+              className={`absolute h-[1.5px] w-5 bg-current transition-transform duration-300 ${isMenuOpen ? "translate-y-0 rotate-45" : "-translate-y-1.5"}`}
+            />
+            <span
+              className={`absolute h-[1.5px] w-5 bg-current transition-opacity duration-300 ${isMenuOpen ? "opacity-0" : "opacity-100"}`}
+            />
+            <span
+              className={`absolute h-[1.5px] w-5 bg-current transition-transform duration-300 ${isMenuOpen ? "translate-y-0 -rotate-45" : "translate-y-1.5"}`}
+            />
+          </button>
+
+          {/* Nav + CTA de escritorio: fila inline junto al logo, solo desde xl:. */}
+          <div className="hidden items-center gap-[clamp(1.5563rem,1.8229vw,2.1875rem)] xl:flex">
+            <nav aria-label="Principal" className="flex flex-row gap-[clamp(2.0899rem,2.4479vw,2.9375rem)]">
+              {navLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="rounded-sm py-2 font-display font-medium text-base text-white/80 whitespace-nowrap transition-colors hover:text-white focus-visible:text-white focus-visible:outline-none xl:py-0 xl:text-[clamp(0.8715rem,1.0208vw,1.225rem)] xl:leading-[1.4286]"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+
             <a
-              href="#inicio"
-              className="flex shrink-0 items-center gap-[clamp(0.2893rem,0.3388vw,0.4066rem)] rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
+              href={ctaHref}
+              className="inline-flex shrink-0 items-center rounded-[clamp(0.4447rem,0.5208vw,0.625rem)] bg-white px-[clamp(1.0672rem,1.25vw,1.5rem)] py-[clamp(0.6225rem,0.7292vw,0.875rem)] font-medium text-[clamp(0.7115rem,0.8333vw,1rem)] text-ldc-navy leading-[1.5] transition-colors hover:bg-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ldc-navy focus-visible:outline-offset-2"
             >
-              <Image
-                src={logoMarkSrc}
-                alt=""
-                width={143}
-                height={46}
-                unoptimized
-                className="h-8 w-auto xl:h-[clamp(2.0418rem,2.3916vw,2.8699rem)]"
-              />
-              <Image
-                src={logoWordmarkSrc}
-                alt={logoWordmarkAlt}
-                width={115}
-                height={56}
-                unoptimized
-                className="h-9 w-auto xl:h-[clamp(2.4901rem,2.9167vw,3.5rem)]"
-              />
+              {ctaLabel}
             </a>
-
-            {/* Toggle hamburguesa/X: mismo botón (no se remonta entre estados), mismo
-                tamaño fijo (size-10) y mismo padding del header en ambos estados, así
-                que su posición nunca cambia al abrir/cerrar. */}
-            <button
-              ref={menuToggleRef}
-              type="button"
-              onClick={() => setIsMenuOpen((open) => !open)}
-              aria-expanded={isMenuOpen}
-              aria-controls="hero-mobile-nav"
-              aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
-              className="relative flex size-10 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white xl:hidden"
-            >
-              <span
-                className={`absolute h-[1.5px] w-5 bg-current transition-transform duration-300 ${isMenuOpen ? "translate-y-0 rotate-45" : "-translate-y-1.5"}`}
-              />
-              <span
-                className={`absolute h-[1.5px] w-5 bg-current transition-opacity duration-300 ${isMenuOpen ? "opacity-0" : "opacity-100"}`}
-              />
-              <span
-                className={`absolute h-[1.5px] w-5 bg-current transition-transform duration-300 ${isMenuOpen ? "translate-y-0 -rotate-45" : "translate-y-1.5"}`}
-              />
-            </button>
-
-            {/* Nav + CTA de escritorio: fila inline junto al logo, solo desde xl:. */}
-            <div className="hidden items-center gap-[clamp(1.5563rem,1.8229vw,2.1875rem)] xl:flex">
-              <nav aria-label="Principal" className="flex flex-row gap-[clamp(2.0899rem,2.4479vw,2.9375rem)]">
-                {navLinks.map((link) => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    className="rounded-sm py-2 font-display font-medium text-base text-white/80 whitespace-nowrap transition-colors hover:text-white focus-visible:text-white focus-visible:outline-none xl:py-0 xl:text-[clamp(0.8715rem,1.0208vw,1.225rem)] xl:leading-[1.4286]"
-                  >
-                    {link.label}
-                  </a>
-                ))}
-              </nav>
-
-              <a
-                href={ctaHref}
-                className="inline-flex shrink-0 items-center rounded-[clamp(0.4447rem,0.5208vw,0.625rem)] bg-white px-[clamp(1.0672rem,1.25vw,1.5rem)] py-[clamp(0.6225rem,0.7292vw,0.875rem)] font-medium text-[clamp(0.7115rem,0.8333vw,1rem)] text-ldc-navy leading-[1.5] transition-colors hover:bg-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ldc-navy focus-visible:outline-offset-2"
-              >
-                {ctaLabel}
-              </a>
-            </div>
           </div>
-        </AnimatedSection>
-
-        {/* Titular + descripción (node 1:152, 1:153) */}
-        <div className="flex flex-1 flex-col justify-end gap-4 px-6 pb-12 xl:absolute xl:inset-x-0 xl:bottom-0 xl:flex-none xl:gap-0 xl:px-0 xl:pb-[clamp(4.3577rem,5.1042vw,6.125rem)] xl:pl-[clamp(2.9348rem,3.4375vw,4.125rem)]">
-          <AnimatedSection>
-            <h1 className="max-w-md font-display text-4xl leading-[1.05] font-medium whitespace-pre-line text-white sm:max-w-xl sm:text-5xl xl:max-w-[clamp(35.6618rem,41.7708vw,50.125rem)] xl:text-[clamp(4.6768rem,5.478vw,6.5736rem)] xl:leading-none">
-              {headline}
-            </h1>
-          </AnimatedSection>
-          <AnimatedSection
-            delay={0.15}
-            className="mt-4 xl:mt-[clamp(2.1498rem,2.5181vw,3.0218rem)] xl:pl-[clamp(0.4002rem,0.4688vw,0.5625rem)]"
-          >
-            <p className="max-w-md text-base leading-[1.6] text-white/80 sm:max-w-lg xl:max-w-[clamp(33.0383rem,38.6979vw,46.4375rem)] xl:text-[clamp(0.7559rem,0.8854vw,1.0625rem)]">
-              {description}
-            </p>
-          </AnimatedSection>
         </div>
+      </AnimatedSection>
+
+      {/* CAPA 3 (contenido): titular + descripción + CTA (node 1:152, 1:153).
+          z-20: por encima de ambas capas de worker y del fondo, siempre legible.
+          Anclado a bottom-0 de la sección en todos los breakpoints (antes solo
+          en xl:, con flex+justify-end para mobile) — se simplifica a un único
+          absolute+inset-x-0+bottom-0 ahora que ya no comparte columna flex con
+          el header. md:/lg: dan un paso explícito de padding para tablet en vez
+          de dejar el px-6 de mobile fijo hasta el salto a los valores clamp de
+          xl: — el resto de la composición (worker full-bleed, texto apilado,
+          nav en hamburguesa) se mantiene igual a mobile a propósito en todo el
+          rango < xl:, por la regla del proyecto de no tratar tablet como un
+          desktop escalado. */}
+      <div className="absolute inset-x-0 bottom-0 z-20 mx-auto flex max-w-(--frame-max-w) flex-col gap-4 px-6 pb-12 md:px-10 md:pb-14 lg:px-11 lg:pb-16 xl:gap-0 xl:px-0 xl:pb-[clamp(4.3577rem,5.1042vw,6.125rem)] xl:pl-[clamp(2.9348rem,3.4375vw,4.125rem)]">
+        <AnimatedSection>
+          <h1 className="max-w-md font-display text-4xl leading-[1.05] font-medium whitespace-pre-line text-white sm:max-w-xl sm:text-5xl xl:max-w-[clamp(35.6618rem,41.7708vw,50.125rem)] xl:text-[clamp(4.6768rem,5.478vw,6.5736rem)] xl:leading-none">
+            {headline}
+          </h1>
+        </AnimatedSection>
+        <AnimatedSection
+          delay={0.15}
+          className="xl:mt-[clamp(2.1498rem,2.5181vw,3.0218rem)] xl:pl-[clamp(0.4002rem,0.4688vw,0.5625rem)]"
+        >
+          <p className="max-w-md text-base leading-[1.6] text-white/80 sm:max-w-lg xl:max-w-[clamp(33.0383rem,38.6979vw,46.4375rem)] xl:text-[clamp(0.7559rem,0.8854vw,1.0625rem)]">
+            {description}
+          </p>
+        </AnimatedSection>
+        <AnimatedSection delay={0.25} className="xl:hidden">
+          <a
+            href={ctaHref}
+            className="inline-flex items-center rounded-lg bg-white px-6 py-3 text-sm font-medium text-ldc-navy transition-colors hover:bg-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+          >
+            {ctaLabel}
+          </a>
+        </AnimatedSection>
       </div>
 
       {/* Overlay fullscreen del menú mobile. Vive fuera de cualquier AnimatedSection a
