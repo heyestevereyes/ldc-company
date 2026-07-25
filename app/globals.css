@@ -21,6 +21,9 @@
   --color-ldc-gray: #f0f0f0;
   --color-ldc-ink: #101010;
   --color-ldc-blue: #1a2bc3;
+
+  /* trayectoria-sec (node 1:234) */
+  --color-ldc-blue-light: #7bb9ff;
 }
 
 @theme inline {
