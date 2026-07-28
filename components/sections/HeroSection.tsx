@@ -23,10 +23,9 @@ export interface HeroNavLink {
 }
 
 export interface HeroSectionProps {
-  /** Decorativo junto al wordmark, que ya aporta el nombre accesible del logo. */
-  logoMarkSrc?: string;
-  logoWordmarkSrc?: string;
-  logoWordmarkAlt?: string;
+  /** Logo-lockup completo (marca + wordmark) del artboard de Figma (node 40:2). */
+  logoSrc?: string;
+  logoAlt?: string;
   navLinks?: HeroNavLink[];
   ctaLabel?: string;
   ctaHref?: string;
@@ -47,9 +46,8 @@ const DEFAULT_NAV_LINKS: HeroNavLink[] = [
 ];
 
 export default function HeroSection({
-  logoMarkSrc = "/images/logo-mark.svg",
-  logoWordmarkSrc = "/images/logo-wordmark.svg",
-  logoWordmarkAlt = "Lithos Development Company",
+  logoSrc = "/images/logo-lockup.svg",
+  logoAlt = "Lithos Development Company",
   navLinks = DEFAULT_NAV_LINKS,
   ctaLabel = "Contacto",
   ctaHref = "#contacto",
@@ -208,10 +206,13 @@ export default function HeroSection({
           la altura real del viewport, ahora que la sección es xl:h-dvh en vez de
           una altura fluida por ancho. xl:max-h-full evita que choque con el nav
           en ventanas muy anchas pero bajas. La sección tiene overflow-hidden así
-          que el offset del parallax nunca produce scroll horizontal/vertical. */}
+          que el offset del parallax nunca produce scroll horizontal/vertical.
+          El ancho deriva del alto vía xl:aspect-[459/865] (aspect real de la foto
+          nueva del worker) en vez de un clamp fijo: así object-cover no recorta
+          verticalmente y el casco/pies quedan completos sin importar la foto. */}
       <motion.div
         style={{ x: workerX, y: workerY }}
-        className="hidden xl:block xl:absolute xl:bottom-0 xl:right-[clamp(11.2499rem,13.1771vw,15.8125rem)] xl:h-[clamp(41.8426rem,49.0104vw,58.8125rem)] xl:max-h-full xl:w-[clamp(25.5236rem,29.8958vw,35.875rem)]"
+        className="hidden xl:block xl:absolute xl:bottom-0 xl:right-[clamp(11.2499rem,13.1771vw,15.8125rem)] xl:h-[clamp(41.8426rem,49.0104vw,58.8125rem)] xl:max-h-full xl:aspect-[459/865] xl:w-auto"
         aria-hidden
       >
         <Image
@@ -244,23 +245,16 @@ export default function HeroSection({
         >
           <a
             href="#inicio"
-            className="flex shrink-0 items-center gap-[clamp(0.2893rem,0.3388vw,0.4066rem)] rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
+            className="flex shrink-0 items-center rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
           >
             <Image
-              src={logoMarkSrc}
-              alt=""
-              width={143}
-              height={46}
+              src={logoSrc}
+              alt={logoAlt}
+              width={724}
+              height={158}
+              priority
               unoptimized
-              className="h-8 w-auto xl:h-[clamp(2.0418rem,2.3916vw,2.8699rem)]"
-            />
-            <Image
-              src={logoWordmarkSrc}
-              alt={logoWordmarkAlt}
-              width={115}
-              height={56}
-              unoptimized
-              className="h-9 w-auto xl:h-[clamp(2.4901rem,2.9167vw,3.5rem)]"
+              className="h-10 w-auto xl:h-[clamp(2.8027rem,3.2813vw,3.9375rem)]"
             />
           </a>
 
