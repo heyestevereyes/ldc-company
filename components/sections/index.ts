@@ -6,3 +6,6 @@ export type { NosotrosSectionProps, NosotrosHighlight } from "./NosotrosSection"
 
 export { default as Trayectoria } from "./Trayectoria";
 export type { TrayectoriaProps, Proyecto, ProyectoDetalle } from "./Trayectoria";
+
+export { default as Footer } from "./Footer";
+export type { FooterProps } from "./Footer";
