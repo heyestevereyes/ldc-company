@@ -339,7 +339,7 @@ export default function Trayectoria({
   );
 
   return (
-    <section className="relative w-full overflow-hidden bg-ldc-navy py-14 md:py-20 xl:py-[clamp(2.7124rem,3.1771vw,3.8125rem)] xl:pb-[clamp(3.6462rem,4.2708vw,5.125rem)]">
+    <section id="proyectos" className="relative w-full overflow-hidden bg-ldc-navy py-14 md:py-20 xl:py-[clamp(2.7124rem,3.1771vw,3.8125rem)] xl:pb-[clamp(3.6462rem,4.2708vw,5.125rem)]">
       <div className="mx-auto max-w-(--frame-max-w)">
         {/* Eyebrow + regla decorativa (node 1:236, 1:258) */}
         <AnimatedSection className="px-6 md:px-10 lg:px-11 xl:px-[clamp(3.8241rem,4.4792vw,5.375rem)]">

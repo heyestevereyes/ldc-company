@@ -69,7 +69,7 @@ export default function NosotrosSection({
   imageAlt = "Grúa de construcción trabajando en la estructura de un edificio residencial de Lithos",
 }: NosotrosSectionProps) {
   return (
-    <section className="relative w-full overflow-hidden bg-ldc-gray">
+    <section id="nosotros" className="relative w-full overflow-hidden bg-ldc-gray">
       {/* xl:min-h contiene la foto absolute (top 469.24 + height 714.52 = bottom
           1183.76, en px de referencia del frame 1920) — a propósito ≈ al frame
           height que da Figma (1196px). La foto, al ser position:absolute, no
@@ -148,9 +148,16 @@ export default function NosotrosSection({
             <div className="mt-10 h-px w-full bg-black/20 md:mt-12 xl:mt-[clamp(1.6452rem,1.9271vw,2.3125rem)]" />
           </AnimatedSection>
 
-          {/* Intro del bloque de experiencia (node 24:5) */}
+          {/* Intro del bloque de experiencia (node 24:5). id="historia": el nav
+              no tiene una sección propia de "Historia" todavía, así que el
+              link apunta aquí — el bloque de trayectoria/experiencia dentro
+              de Nosotros — en vez de duplicar el mismo destino que "Nosotros"
+              (que apunta al inicio de la sección). */}
           <AnimatedSection delay={0.4}>
-            <p className="mt-8 text-base leading-[1.36] text-ldc-ink md:mt-10 xl:mt-[clamp(1.6897rem,1.9792vw,2.375rem)] xl:text-[clamp(0.8893rem,1.0417vw,1.25rem)]">
+            <p
+              id="historia"
+              className="mt-8 scroll-mt-6 text-base leading-[1.36] text-ldc-ink md:mt-10 xl:mt-[clamp(1.6897rem,1.9792vw,2.375rem)] xl:text-[clamp(0.8893rem,1.0417vw,1.25rem)]"
+            >
               {highlightsIntro}
             </p>
           </AnimatedSection>

@@ -153,6 +153,7 @@ export default function HeroSection({
 
   return (
     <section
+      id="inicio"
       className="relative w-full overflow-hidden min-h-[100svh] xl:h-dvh xl:min-h-0"
       onMouseMove={handleHeroMouseMove}
       onMouseLeave={handleHeroMouseLeave}
