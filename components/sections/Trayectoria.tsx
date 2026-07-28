@@ -2,7 +2,6 @@
 
 import {
   useCallback,
-  useEffect,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -12,6 +11,7 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 import AnimatedSection from "@/components/AnimatedSection";
+import { useModalBehavior } from "@/hooks/useModalBehavior";
 
 export interface ProyectoDetalle {
   label: string;
@@ -19,20 +19,24 @@ export interface ProyectoDetalle {
 }
 
 export interface Proyecto {
-  /** Nombre corto que titula la tarjeta (node 6:22). */
+  /** Nombre corto que titula la tarjeta y el lightbox (node 6:22). */
   nombre: string;
   /** Primera línea de detalle en la tarjeta (node 6:25). */
   subtitulo: string;
-  ubicacion: string;
-  /** Estado / año, p. ej. "2023 - Actualmente en ejecución" (node 32:2). */
+  /** Omite el campo (en tarjeta y lightbox) si el proyecto no tiene una sede
+   * única — p. ej. una división de suministro que abastece varias regiones. */
+  ubicacion?: string;
+  tipologia: string;
+  /** P. ej. "80 – 140 m²" o "No aplica". Deja sin definir si el dato aún no
+   * existe: se muestra como "Por definir" en vez de omitirse. */
+  superficie?: string;
   estado: string;
+  /** P. ej. "2017 – 2022". Deja sin definir para mostrar "Por definir". */
+  anio?: string;
+  /** Única imagen del proyecto: se reutiliza en el slide y en el lightbox. */
   imageSrc: string;
   imageAlt: string;
-  // --- Contenido del lightbox (el Figma aún no lo define: placeholders). ---
-  /** [PLACEHOLDER] Descripción larga del proyecto para el lightbox. */
   descripcion: string;
-  /** [PLACEHOLDER] Ficha técnica del proyecto para el lightbox. */
-  detalles: ProyectoDetalle[];
 }
 
 export interface TrayectoriaProps {
@@ -41,34 +45,89 @@ export interface TrayectoriaProps {
   proyectos?: Proyecto[];
 }
 
-const PLACEHOLDER_DESCRIPCION =
-  "[Descripción pendiente] Aquí irá el detalle narrativo del proyecto: alcance, retos constructivos, materiales y el valor que aporta a la comunidad. Contenido de ejemplo hasta recibir la información real de cada proyecto.";
+/** Placeholder discreto para campos que sí aplican pero cuyo valor real aún
+ * no está definido (a diferencia de un campo que no aplica, que se omite). */
+const POR_DEFINIR = "Por definir";
 
-const PLACEHOLDER_DETALLES: ProyectoDetalle[] = [
-  { label: "Ubicación", value: "San Juan del Río, Querétaro" },
-  { label: "Tipología", value: "Complejo residencial" },
-  { label: "Superficie", value: "[Pendiente]" },
-  { label: "Estado", value: "En ejecución" },
-  { label: "Año", value: "2023" },
-];
+/** Línea combinada de la tarjeta (node 32:2, p. ej. "2023 - Actualmente en
+ * ejecución"): omite el año cuando aún no está definido, para no mostrar
+ * "Por definir" en la vista compacta (sí se ve, con su etiqueta, en el
+ * lightbox vía buildDetalles). */
+function formatEstadoLinea(estado: string, anio?: string): string {
+  if (anio && anio !== POR_DEFINIR) return `${anio} - ${estado}`;
+  return estado;
+}
 
-const BASE_PROYECTO: Omit<Proyecto, "nombre"> = {
-  subtitulo: "Complejo Residencial San Francisco",
-  ubicacion: "San Juan del Río, Querétaro",
-  estado: "2023 - Actualmente en ejecución",
-  imageSrc: "/images/trayectoria-proyecto.png",
-  imageAlt:
-    "Fachada del Complejo Residencial San Francisco al atardecer, en San Juan del Río, Querétaro",
-  descripcion: PLACEHOLDER_DESCRIPCION,
-  detalles: PLACEHOLDER_DETALLES,
-};
+/** Ficha técnica del lightbox, derivada de los mismos campos estructurados
+ * que usa la tarjeta — así un campo ausente (undefined) se omite de forma
+ * consistente en los dos lugares sin tener que mantener dos copias del dato. */
+function buildDetalles(proyecto: Proyecto): ProyectoDetalle[] {
+  const detalles: ProyectoDetalle[] = [];
+  if (proyecto.ubicacion) detalles.push({ label: "Ubicación", value: proyecto.ubicacion });
+  detalles.push({ label: "Tipología", value: proyecto.tipologia });
+  if (proyecto.superficie) detalles.push({ label: "Superficie", value: proyecto.superficie });
+  detalles.push({ label: "Estado", value: proyecto.estado });
+  if (proyecto.anio) detalles.push({ label: "Año", value: proyecto.anio });
+  return detalles;
+}
 
-// Por ahora: mismo contenido del slide de ejemplo duplicado 3 veces, pero como
-// objetos independientes para poder editar cada proyecto sin tocar el componente.
 const DEFAULT_PROYECTOS: Proyecto[] = [
-  { nombre: "San Francisco", ...BASE_PROYECTO },
-  { nombre: "San Francisco", ...BASE_PROYECTO },
-  { nombre: "San Francisco", ...BASE_PROYECTO },
+  {
+    nombre: "San Francisco",
+    subtitulo: "Complejo Residencial San Francisco",
+    ubicacion: "San Juan del Río, Querétaro",
+    tipologia: "Complejo residencial",
+    superficie: POR_DEFINIR,
+    estado: "Actualmente en ejecución",
+    anio: "2023",
+    imageSrc: "/images/sanfrancisco_cover.jpg",
+    imageAlt:
+      "Fachada del Complejo Residencial San Francisco al atardecer, en San Juan del Río, Querétaro",
+    descripcion:
+      "[Descripción pendiente] Aquí irá el detalle narrativo del proyecto: alcance, retos constructivos, materiales y el valor que aporta a la comunidad. Contenido de ejemplo hasta recibir la información real de este proyecto.",
+  },
+  {
+    nombre: "Villas de la Cruz",
+    subtitulo: "Complejo Residencial Villas de la Cruz",
+    ubicacion: "San Juan del Río, Querétaro",
+    tipologia: "Complejo residencial",
+    superficie: "80 – 140 m²",
+    estado: "Concluido",
+    anio: "2017 – 2022",
+    imageSrc: "/images/villasdelacruz_cover.jpg",
+    imageAlt:
+      "Fachada de las Villas de la Cruz, complejo residencial de estilo colonial en San Juan del Río, Querétaro",
+    descripcion:
+      "Desarrollo residencial de casas con un distinguido estilo colonial, con superficies que varían desde los 80 m² hasta los 140 m² de construcción aproximadamente. Las viviendas fueron diseñadas con una distribución óptima que incluye 3 recámaras, 2 y ½ baños, jardín trasero y 2 cajones de estacionamiento. El complejo destaca por su infraestructura de seguridad integral, operando con control de acceso y vigilancia las 24 horas, los 7 días de la semana.",
+  },
+  {
+    nombre: "San Gerardo",
+    subtitulo: "Desarrollo Residencial San Gerardo",
+    ubicacion: "San Miguel de Allende, Guanajuato",
+    tipologia: "Desarrollo habitacional",
+    superficie: POR_DEFINIR,
+    estado: "Planeación y Proyección a Futuro",
+    anio: POR_DEFINIR,
+    imageSrc: "/images/sangerardo_cover.jpg",
+    imageAlt:
+      "Vista del desarrollo residencial San Gerardo en construcción, en San Miguel de Allende, Guanajuato",
+    descripcion:
+      "Con este próximo paso estratégico en una de las ciudades con mayor plusvalía y atractivo cultural del país, Lithos Development Company reafirma su compromiso de expandir su huella habitacional bajo premisas de alta calidad, diseño vanguardista y valor patrimonial a largo plazo.",
+  },
+  {
+    nombre: "Divisiones Estratégicas de Suministro",
+    subtitulo: "Concretera y Bloquera",
+    // Sin ubicación: abastece varios proyectos en la región, no tiene una sede única.
+    tipologia: "División industrial / de suministro",
+    superficie: "No aplica",
+    estado: "En operación",
+    anio: "2018",
+    imageSrc: "/images/divisiones-suministro_cover.jpg",
+    imageAlt:
+      "Planta de concretera y bloquera de Lithos Development Company en operación, con silos, camión revolvedor y block apilado",
+    descripcion:
+      "Fundadas en 2018 a la par del crecimiento de la firma, las divisiones de Concretera y Bloquera nacieron con el objetivo estratégico de asegurar el autoabastecimiento y control de calidad de los materiales de la empresa. Además de blindar la cadena de suministro interna, estas plantas producen y abastecen activamente diversos proyectos constructivos e industriales en los alrededores de la región de Polotitlán y San Juan del Río.",
+  },
 ];
 
 /** Puntos del icono del eyebrow (node 1:237, 68×44, se rota 180° como en Figma). */
@@ -164,8 +223,8 @@ function ProjectCard({ proyecto }: { proyecto: Proyecto }) {
         </p>
         <div className="mt-3 flex flex-col text-xs leading-[1.5] text-white/80 md:text-sm xl:mt-[clamp(0.7055rem,0.8263vw,0.9916rem)] xl:text-[clamp(0.823rem,0.964vw,1.1568rem)] xl:leading-[1.5]">
           <span>{proyecto.subtitulo}</span>
-          <span>{proyecto.ubicacion}</span>
-          <span>{proyecto.estado}</span>
+          {proyecto.ubicacion && <span>{proyecto.ubicacion}</span>}
+          <span>{formatEstadoLinea(proyecto.estado, proyecto.anio)}</span>
         </div>
       </div>
     </div>
@@ -179,56 +238,7 @@ function Lightbox({
   proyecto: Proyecto;
   onClose: () => void;
 }) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-
-  // Bloquea el scroll del body (compensa la scrollbar para que no salte el layout).
-  useEffect(() => {
-    const scrollbar = window.innerWidth - document.documentElement.clientWidth;
-    const { body } = document;
-    const prevOverflow = body.style.overflow;
-    const prevPad = body.style.paddingRight;
-    body.style.overflow = "hidden";
-    if (scrollbar > 0) body.style.paddingRight = `${scrollbar}px`;
-    return () => {
-      body.style.overflow = prevOverflow;
-      body.style.paddingRight = prevPad;
-    };
-  }, []);
-
-  // Foco al abrir → botón cerrar; al desmontar, devuelve el foco al opener.
-  // Esc cierra; Tab queda atrapado dentro del diálogo.
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
-    closeRef.current?.focus();
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-        return;
-      }
-      if (event.key !== "Tab" || !dialogRef.current) return;
-      const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
-        'a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex="-1"])',
-      );
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      opener?.focus?.();
-    };
-  }, [onClose]);
+  const { dialogRef, initialFocusRef: closeRef } = useModalBehavior<HTMLButtonElement>(onClose);
 
   if (typeof document === "undefined") return null;
 
@@ -255,12 +265,17 @@ function Lightbox({
           <CloseIcon className="size-5" />
         </button>
 
-        {/* Placeholder de imagen del lightbox: placa gris sólida (sin URL real). */}
-        <div
-          className="flex aspect-[4/3] w-full shrink-0 items-center justify-center bg-neutral-300 text-sm font-medium text-neutral-500 md:aspect-auto md:w-1/2"
-          aria-hidden
-        >
-          Imagen del proyecto (pendiente)
+        {/* Misma imagen de cover que el slide (sin imagen separada para el
+            lightbox): fill dentro de un contenedor con tamaño explícito
+            (aspect-ratio en mobile, alto por flex-stretch en md:+). */}
+        <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden md:aspect-auto md:w-1/2">
+          <Image
+            src={proyecto.imageSrc}
+            alt={proyecto.imageAlt}
+            fill
+            sizes="(min-width: 768px) 50vw, 100vw"
+            className="object-cover"
+          />
         </div>
 
         <div className="flex flex-col gap-5 p-6 md:w-1/2 md:overflow-y-auto md:p-8">
@@ -277,7 +292,7 @@ function Lightbox({
           <p className="text-sm leading-[1.6] text-ldc-ink/80">{proyecto.descripcion}</p>
 
           <dl className="flex flex-col divide-y divide-black/10 border-t border-black/10 text-sm">
-            {proyecto.detalles.map((detalle) => (
+            {buildDetalles(proyecto).map((detalle) => (
               <div key={detalle.label} className="flex justify-between gap-4 py-2.5">
                 <dt className="text-ldc-ink/60">{detalle.label}</dt>
                 <dd className="text-right font-medium text-ldc-navy">{detalle.value}</dd>
