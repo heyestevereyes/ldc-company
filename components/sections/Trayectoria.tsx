@@ -88,9 +88,9 @@ const DEFAULT_PROYECTOS: Proyecto[] = [
     imageAlt:
       "Fachada del Complejo Residencial San Francisco al atardecer, en San Juan del Río, Querétaro",
     descripcion:
-      "Proyecto de alta densidad compuesto por 18 torres que albergan un total de 8 departamentos por torre. Cada unidad habitacional cuenta con una superficie de 60 m² de construcción, distribuida eficientemente en áreas funcionales que integran un baño completo, área de lavado independiente y un cajón de estacionamiento exclusivo. En materia de servicios, el complejo garantiza autonomía hídrica mediante la instalación de una cisterna individual de 1,000 L y un tinaco propio de 600 L por departamento. Adicionalmente, dispone de seguridad privada 24/7 y áreas infantiles de uso común para el sano esparcimiento familiar.",
+      "Complejo residencial de alta densidad con 18 torres y 8 departamentos por torre de 60 m² cada uno. Cada unidad cuenta con autonomía hídrica propia, y el conjunto ofrece seguridad privada 24/7 y áreas infantiles de uso común.",
     innovacionTecnica:
-      "Fiel a su filosofía de vanguardia, el proyecto comenzó inicialmente utilizando un sistema tradicional de construcción con tabique. Sin embargo, en el año 2026, la compañía dio un salto tecnológico clave al implementar un sistema constructivo industrializado basado en moldes de precisión. Esta innovación reduce sustancialmente el margen de error, acelera los tiempos de entrega y eleva exponencialmente la eficiencia en la obra.",
+      "El proyecto pasó de un sistema tradicional de tabique a uno industrializado con moldes de precisión en 2026, logrando mayor eficiencia y un menor margen de error en la obra.",
   },
   {
     nombre: "Villas de la Cruz",
