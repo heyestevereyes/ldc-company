@@ -37,6 +37,10 @@ export interface Proyecto {
   imageSrc: string;
   imageAlt: string;
   descripcion: string;
+  /** Narrativa opcional sobre un avance/cambio en el método constructivo del
+   * proyecto (p. ej. adopción de un sistema industrializado). Solo la tienen
+   * algunos proyectos: se omite del lightbox cuando no está definida. */
+  innovacionTecnica?: string;
 }
 
 export interface TrayectoriaProps {
@@ -74,17 +78,19 @@ function buildDetalles(proyecto: Proyecto): ProyectoDetalle[] {
 const DEFAULT_PROYECTOS: Proyecto[] = [
   {
     nombre: "San Francisco",
-    subtitulo: "Complejo Residencial San Francisco",
+    subtitulo: "Complejo Residencial San Francisco (En Desarrollo)",
     ubicacion: "San Juan del Río, Querétaro",
     tipologia: "Complejo residencial",
-    superficie: POR_DEFINIR,
+    superficie: "60 m² por departamento",
     estado: "Actualmente en ejecución",
     anio: "2023",
     imageSrc: "/images/sanfrancisco_cover.jpg",
     imageAlt:
       "Fachada del Complejo Residencial San Francisco al atardecer, en San Juan del Río, Querétaro",
     descripcion:
-      "[Descripción pendiente] Aquí irá el detalle narrativo del proyecto: alcance, retos constructivos, materiales y el valor que aporta a la comunidad. Contenido de ejemplo hasta recibir la información real de este proyecto.",
+      "Proyecto de alta densidad compuesto por 18 torres que albergan un total de 8 departamentos por torre. Cada unidad habitacional cuenta con una superficie de 60 m² de construcción, distribuida eficientemente en áreas funcionales que integran un baño completo, área de lavado independiente y un cajón de estacionamiento exclusivo. En materia de servicios, el complejo garantiza autonomía hídrica mediante la instalación de una cisterna individual de 1,000 L y un tinaco propio de 600 L por departamento. Adicionalmente, dispone de seguridad privada 24/7 y áreas infantiles de uso común para el sano esparcimiento familiar.",
+    innovacionTecnica:
+      "Fiel a su filosofía de vanguardia, el proyecto comenzó inicialmente utilizando un sistema tradicional de construcción con tabique. Sin embargo, en el año 2026, la compañía dio un salto tecnológico clave al implementar un sistema constructivo industrializado basado en moldes de precisión. Esta innovación reduce sustancialmente el margen de error, acelera los tiempos de entrega y eleva exponencialmente la eficiencia en la obra.",
   },
   {
     nombre: "Villas de la Cruz",
@@ -290,6 +296,17 @@ function Lightbox({
           </div>
 
           <p className="text-sm leading-[1.6] text-ldc-ink/80">{proyecto.descripcion}</p>
+
+          {proyecto.innovacionTecnica && (
+            <div>
+              <h4 className="font-display text-sm font-semibold tracking-[-0.01em] text-ldc-navy">
+                Innovación técnica
+              </h4>
+              <p className="mt-1.5 text-sm leading-[1.6] text-ldc-ink/80">
+                {proyecto.innovacionTecnica}
+              </p>
+            </div>
+          )}
 
           <dl className="flex flex-col divide-y divide-black/10 border-t border-black/10 text-sm">
             {buildDetalles(proyecto).map((detalle) => (
