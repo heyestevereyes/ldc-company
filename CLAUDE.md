@@ -156,6 +156,35 @@ implemente**, sin que haya que pedirlos explícitamente cada vez.
   reglas.
 - Confirmación visible de envío exitoso o de error.
 
+## Variables de entorno
+
+Definidas en `.env.local` (gitignored) con el placeholder documentado en
+`.env.example`. Cuando no tenemos el valor real todavía, `.env.local` usa
+un placeholder deliberadamente inválido con el prefijo `PENDIENTE_`; el
+código que consume esa variable lo detecta (helper `isPending`, presente en
+cada sitio que lo necesita) y responde con un fallback en vez de fallar a
+medias con una credencial rota.
+
+- `RESEND_API_KEY`, `CONTACT_EMAIL_TO` — envío del formulario de contacto
+  (`app/api/contact/route.ts`). Mientras `RESEND_API_KEY` sea
+  `PENDIENTE_...`, la route responde con un error claro sin intentar
+  enviar.
+- `NEXT_PUBLIC_SANITY_PROJECT_ID` (`7wb2w6er`), `NEXT_PUBLIC_SANITY_DATASET`
+  (`production`) — proyecto real de Sanity ("LDC Content") que alimenta el
+  contenido editorial (hero, proyectos de Trayectoria, footer) vía
+  `lib/sanity/`. Si algún día vuelven a quedar en `PENDIENTE_...`,
+  `sanity/env.ts` marca `isSanityConfigured = false` y los fetchers de
+  `lib/sanity/fetchers.ts` devuelven `null`, con lo que cada sección cae
+  en sus valores por defecto (`app/(site)/page.tsx`).
+- `SANITY_API_TOKEN` — token con permisos de escritura ("Editor"), generado
+  en sanity.io/manage → proyecto `7wb2w6er` → API → Tokens. Solo lo usa
+  `scripts/migrate-sanity-content.ts` (migración inicial de contenido); no
+  hace falta en runtime del sitio ni del Studio.
+- `SANITY_REVALIDATE_SECRET` — secreto compartido con el webhook de Sanity
+  (manage.sanity.io → API → Webhooks) que dispara
+  `app/api/revalidate/route.ts` al publicar contenido. Sigue en
+  `PENDIENTE_SANITY_REVALIDATE_SECRET` hasta crear ese webhook.
+
 ## Content language
 
 Copy y textos de UI en español (mercado del cliente), a menos que se
