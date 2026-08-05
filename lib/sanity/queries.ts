@@ -12,6 +12,16 @@ export const heroQuery = groq`*[_id == "hero"][0]{
   workerImageAlt
 }`;
 
+export const nuestraHistoriaQuery = groq`*[_id == "nuestraHistoria"][0]{
+  eyebrow,
+  headline,
+  paragraphs,
+  image,
+  imageAlt,
+  highlightsIntro,
+  highlights
+}`;
+
 export const proyectosQuery = groq`*[_type == "proyecto"] | order(orden asc){
   nombre,
   subtitulo,

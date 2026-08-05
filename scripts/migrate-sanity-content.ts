@@ -1,8 +1,9 @@
 /**
  * Migración inicial de contenido a Sanity: crea los documentos hero,
- * proyecto (x4) y footer con el mismo contenido que hoy vive hardcodeado
- * como fallback en components/sections/*.tsx (ver DEFAULT_PROYECTOS en
- * Trayectoria.tsx y los valores por defecto de HeroSection/Footer).
+ * nuestraHistoria, proyecto (x4) y footer con el mismo contenido que hoy
+ * vive hardcodeado como fallback en components/sections/*.tsx (ver
+ * DEFAULT_PROYECTOS en Trayectoria.tsx y los valores por defecto de
+ * HeroSection/NosotrosSection/Footer).
  *
  * Uso: npx tsx scripts/migrate-sanity-content.ts
  *
@@ -108,6 +109,39 @@ async function migrateHero(): Promise<void> {
   });
 
   console.log("✓ hero");
+}
+
+// Mismo contenido que los valores por defecto de NosotrosSection
+// (components/sections/NosotrosSection.tsx).
+async function migrateNuestraHistoria(): Promise<void> {
+  const image = await uploadImage("nosotros-construccion.jpg");
+
+  await client.createOrReplace({
+    _id: "nuestraHistoria",
+    _type: "nuestraHistoria",
+    eyebrow: "Quienes somos",
+    headline: "Nuestra trayectoria y experiencia se demuestra en cada cimiento",
+    paragraphs: [
+      "Lithos Development Company (LDC) es un grupo constructor e inmobiliario dinámico y en constante evolución. Nos distinguimos por un modelo de negocio integral que abarca desde la conceptualización y ejecución de desarrollos residenciales hasta la producción y suministro autónomo de insumos clave a través de nuestras propias divisiones de concretera y bloquera.",
+      "Esta estructura nos consolida con todos los elementos necesarios para materializar conceptos urbanos innovadores, garantizando los más altos estándares de seguridad estructural, eficiencia operativa y armonía ambiental en cada etapa constructiva.",
+    ],
+    image,
+    imageAlt: "Grúa de construcción trabajando en la estructura de un edificio residencial de Lithos",
+    highlightsIntro:
+      "A pesar de ser una organización joven, LDC cuenta con un respaldo de sólida experiencia técnica en proyectos de alta complejidad de infraestructura e industriales, entre los que destacan:",
+    highlights: [
+      {
+        _key: "lago-polotitlan",
+        text: "La construcción de un lago especializado con sistemas de impermeabilización mediante geomembrana en Polotitlán.",
+      },
+      {
+        _key: "naves-industriales",
+        text: "La edificación de tres naves industriales equipadas con techumbres de arco (arcotecho), optimizando claros libres y tiempos de ejecución.",
+      },
+    ],
+  });
+
+  console.log("✓ nuestraHistoria");
 }
 
 interface ProyectoSeed {
@@ -234,6 +268,7 @@ async function migrateFooter(): Promise<void> {
 async function main() {
   console.log(`[migrate] Proyecto ${projectId} / dataset ${dataset}\n`);
   await migrateHero();
+  await migrateNuestraHistoria();
   await migrateProyectos();
   await migrateFooter();
   console.log("\n[migrate] Listo. Revisa /studio para confirmar el contenido.");

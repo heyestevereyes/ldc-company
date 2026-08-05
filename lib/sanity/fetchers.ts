@@ -1,8 +1,13 @@
 import type { SanityImageSource } from "@sanity/image-url";
-import type { HeroSectionProps, FooterProps, Proyecto } from "@/components/sections";
+import type {
+  HeroSectionProps,
+  NosotrosSectionProps,
+  FooterProps,
+  Proyecto,
+} from "@/components/sections";
 import { getSanityClient } from "./client";
 import { urlFor } from "./image";
-import { heroQuery, proyectosQuery, footerQuery } from "./queries";
+import { heroQuery, nuestraHistoriaQuery, proyectosQuery, footerQuery } from "./queries";
 
 interface SanityHeroDoc {
   headline?: string;
@@ -10,6 +15,16 @@ interface SanityHeroDoc {
   backgroundImage?: SanityImageSource;
   workerImage?: SanityImageSource;
   workerImageAlt?: string;
+}
+
+interface SanityNuestraHistoriaDoc {
+  eyebrow?: string;
+  headline?: string;
+  paragraphs?: string[];
+  image?: SanityImageSource;
+  imageAlt?: string;
+  highlightsIntro?: string;
+  highlights?: { text?: string }[];
 }
 
 interface SanityProyectoDoc {
@@ -68,6 +83,35 @@ export async function getHero(): Promise<Partial<HeroSectionProps> | null> {
     };
   } catch (err) {
     console.error("[lib/sanity] Error al obtener hero:", err);
+    return null;
+  }
+}
+
+export async function getNuestraHistoria(): Promise<Partial<NosotrosSectionProps> | null> {
+  const client = getSanityClient();
+  if (!client) return null;
+
+  try {
+    const data = await client.fetch<SanityNuestraHistoriaDoc | null>(
+      nuestraHistoriaQuery,
+      {},
+      { next: { tags: ["nuestraHistoria"] } },
+    );
+    if (!data) return null;
+
+    return {
+      eyebrow: data.eyebrow,
+      headline: data.headline,
+      paragraphs: data.paragraphs,
+      imageSrc: data.image ? urlFor(data.image).width(1400).auto("format").url() : undefined,
+      imageAlt: data.imageAlt,
+      highlightsIntro: data.highlightsIntro,
+      highlights: data.highlights
+        ?.filter((h): h is { text: string } => Boolean(h.text))
+        .map((h) => ({ text: h.text })),
+    };
+  } catch (err) {
+    console.error("[lib/sanity] Error al obtener nuestraHistoria:", err);
     return null;
   }
 }

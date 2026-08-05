@@ -1,10 +1,10 @@
 import type { StructureResolver } from "sanity/structure";
 
-/** hero y footer son singletons (un solo documento de contenido por
- * sección, con _id fijo) — se editan directo en vez de listarse como una
- * colección. proyecto sí es una colección real (uno por tarjeta del
- * carrusel de Trayectoria). */
-const SINGLETON_TYPES = new Set(["hero", "footer"]);
+/** hero, nuestraHistoria y footer son singletons (un solo documento de
+ * contenido por sección, con _id fijo) — se editan directo en vez de
+ * listarse como una colección. proyecto sí es una colección real (uno por
+ * tarjeta del carrusel de Trayectoria). */
+const SINGLETON_TYPES = new Set(["hero", "nuestraHistoria", "footer"]);
 
 export const structure: StructureResolver = (S) =>
   S.list()
@@ -14,6 +14,10 @@ export const structure: StructureResolver = (S) =>
         .title("Hero")
         .id("hero")
         .child(S.document().schemaType("hero").documentId("hero")),
+      S.listItem()
+        .title("Nuestra Historia")
+        .id("nuestraHistoria")
+        .child(S.document().schemaType("nuestraHistoria").documentId("nuestraHistoria")),
       S.listItem()
         .title("Proyectos (Trayectoria)")
         .schemaType("proyecto")

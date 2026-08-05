@@ -1,1 +1,1 @@
-export { getHero, getProyectos, getFooter } from "./fetchers";
+export { getHero, getNuestraHistoria, getProyectos, getFooter } from "./fetchers";
